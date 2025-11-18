@@ -1,8 +1,7 @@
 import json
 import csv
-import argparse
+import os
 import sys
-
 
 def json_to_csv(json_file, csv_file):
     try:
@@ -10,10 +9,10 @@ def json_to_csv(json_file, csv_file):
             data = json.load(f)
     except FileNotFoundError:
         print(f"Ошибка: файл {json_file} не найден.")
-        sys.exit(1)
+        return False
     except json.JSONDecodeError:
         print(f"Ошибка: файл {json_file} не является корректным JSON.")
-        sys.exit(1)
+        return False
 
     try:
         if isinstance(data, list) and data:
@@ -25,8 +24,8 @@ def json_to_csv(json_file, csv_file):
                     writer.writeheader()
                     writer.writerows(data)
             else:
-                print("Ошибка: JSON-массив должен содержать объекты.")
-                sys.exit(1)
+                print(f"Ошибка: JSON-массив в {json_file} должен содержать объекты.")
+                return False
         elif isinstance(data, dict):
             # Одиночный объект
             with open(csv_file, 'w', newline='', encoding='utf-8') as f:
@@ -34,27 +33,30 @@ def json_to_csv(json_file, csv_file):
                 writer.writerow(data.keys())
                 writer.writerow(data.values())
         else:
-            print("Ошибка: неподдерживаемая структура JSON. Ожидается массив объектов или объект.")
-            sys.exit(1)
+            print(f"Ошибка: неподдерживаемая структура JSON в {json_file}. Ожидается массив объектов или объект.")
+            return False
     except Exception as e:
-        print(f"Ошибка при записи CSV: {e}")
-        sys.exit(1)
+        print(f"Ошибка при записи CSV для {json_file}: {e}")
+        return False
 
     print(f"Конвертация завершена. CSV сохранен в {csv_file}")
-
+    return True
 
 def main():
-    parser = argparse.ArgumentParser(description='Конвертирует JSON-файл в CSV.')
-    parser.add_argument('json_file', help='Путь к JSON-файлу')
-    parser.add_argument('--output', '-o', help='Путь к выходному CSV-файлу (по умолчанию: имя JSON-файла с расширением .csv)')
-
-    args = parser.parse_args()
-
-    if args.output is None:
-        args.output = args.json_file.rsplit('.', 1)[0] + '.csv'
-
-    json_to_csv(args.json_file, args.output)
-
+    # Получить список всех .json файлов в текущей директории
+    json_files = [f for f in os.listdir('.') if f.endswith('.json')]
+    
+    if not json_files:
+        print("В текущей директории нет JSON-файлов для конвертации.")
+        sys.exit(0)
+    
+    converted_count = 0
+    for json_file in json_files:
+        csv_file = json_file.rsplit('.', 1)[0] + '.csv'
+        if json_to_csv(json_file, csv_file):
+            converted_count += 1
+    
+    print(f"Всего конвертировано файлов: {converted_count}")
 
 if __name__ == "__main__":
     main()
